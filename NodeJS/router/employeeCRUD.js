@@ -1,12 +1,21 @@
 const express = require('express');
+const auth = require('../middleware/auth');
+const admin = require('../middleware/admin');
 var router = express.Router();
 var ObjectId = require('mongoose').Types.ObjectId;
 
 
 const { Employee, validate } = require('../models/employee');
 
-router.get('/', async (req, res) => {
-    const employees = await Employee.find().sort('name');
+router.get('/', auth, async (req, res) => {
+    let employees ;
+    if (req.user.isAdmin)
+        employees = await Employee.find().sort('name');
+    else {
+        employees = await Employee.findOne({ name: req.user.name });
+        employees = [ employees ]
+    }
+       
     res.send(employees);
 });
 
@@ -22,14 +31,16 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     const { error } = validate(req.body); 
     if (error) return res.status(400).send(error.details[0].message);
+
+    let pay = req.body.salary * (100 - req.body.deduction) / 100 ;
   
     let employee = new Employee({ 
         name: req.body.name,
         salary: req.body.salary,
-        deduction: req.body.deduction
+        deduction: req.body.deduction,
+        paycheck: pay
     });
     employee = await employee.save();
-    
     res.send(employee);
   });
 
@@ -40,11 +51,14 @@ router.put('/:id', async (req, res) => {
     if (!ObjectId.isValid(req.params.id))
         return res.status(400).send(`No record with given id : ${req.params.id}`);
 
+    let pay = req.body.salary * (100 - req.body.deduction) / 100 ;
+
     const employee = await Employee.findByIdAndUpdate(req.params.id,
     { 
         name: req.body.name,
         salary: req.body.salary,
-        deduction: req.body.deduction
+        deduction: req.body.deduction,
+        paycheck: pay
     }, { new: true });
 
     if (!employee) return res.status(404).send('The employee with the given ID was not found.');
