@@ -19,6 +19,9 @@ const Employee = mongoose.model('Employee', new mongoose.Schema({
   paycheck: {
     type: Number,
     required:false
+  },
+  userId: {
+    type: String
   }
 
 }));
@@ -27,8 +30,9 @@ function validateEmployee(employee) {
     const schema = Joi.object({
       name: Joi.string().min(5).max(50).required(),
       salary: Joi.number().required(),
-      deduction: Joi.number().required(),
-      paycheck: Joi.number().optional()
+      deduction: Joi.number().min(1).max(99).required(),
+      paycheck: Joi.number().optional(),
+      userId: Joi.string().optional()
     });
     return schema.validate(employee);
   }

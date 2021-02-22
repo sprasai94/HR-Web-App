@@ -12,7 +12,7 @@ router.get('/', auth, async (req, res) => {
     if (req.user.isAdmin)
         employees = await Employee.find().sort('name');
     else {
-        employees = await Employee.findOne({ name: req.user.name });
+        employees = await Employee.findOne({ userId: req.user._id });
         employees = [ employees ]
     }
        
@@ -28,23 +28,33 @@ router.get('/:id', async (req, res) => {
     res.send(employee);
   });
 
-router.post('/', async (req, res) => {
+router.post('/', auth, async (req, res) => {
     const { error } = validate(req.body); 
     if (error) return res.status(400).send(error.details[0].message);
 
+    let emp = await Employee.findOne({ userId: req.user._id });
+    if (emp) return res.status(400).send('Employee data already submited');
+
     let pay = req.body.salary * (100 - req.body.deduction) / 100 ;
-  
-    let employee = new Employee({ 
+
+    let employeeData = { 
         name: req.body.name,
         salary: req.body.salary,
         deduction: req.body.deduction,
         paycheck: pay
-    });
+    }
+    if(!req.user.isAdmin){
+        employeeData.userId = req.user._id
+    }
+
+    let employee = new Employee(employeeData);
     employee = await employee.save();
-    res.send(employee);
+    res.json({
+        message:"Success", 
+    }).status(200)
   });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
     const { error } = validate(req.body); 
     if (error) return res.status(400).send(error.details[0].message);
 
@@ -66,7 +76,7 @@ router.put('/:id', async (req, res) => {
     res.send(employee);
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
     if (!ObjectId.isValid(req.params.id))
         return res.status(400).send(`No record with given id : ${req.params.id}`);
 
